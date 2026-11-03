@@ -8,7 +8,7 @@ Projeto pessoal, gratuito e sem fins comerciais, inspirado no Letterboxd, que ca
 
 - **API:** ASP.NET Core (.NET 10), Entity Framework Core, PostgreSQL
 - **Web:** Next.js com TypeScript
-- **Dados:** [TMDB](https://www.themoviedb.org/) (filmes, séries, elenco, temporadas), [OMDb](https://www.omdbapi.com/) (notas IMDb, Rotten Tomatoes, Metacritic) e [Wikidata](https://www.wikidata.org/) (Oscar e Emmy)
+- **Dados:** [TMDB](https://www.themoviedb.org/) (filmes, séries, elenco, temporadas), [OMDb](https://www.omdbapi.com/) (notas IMDb, Rotten Tomatoes, Metacritic), [oscar_data](https://github.com/DLu/oscar_data) (Oscar) e [Wikidata](https://www.wikidata.org/) (Emmy)
 
 ```
 /api    API ASP.NET Core
@@ -116,7 +116,24 @@ No plano gratuito o Render "dorme" após um tempo sem acesso. Os jobs diários g
 
 - Dados de filmes e séries: [TMDB](https://www.themoviedb.org/). This product uses the TMDB API but is not endorsed or certified by TMDB.
 - Notas externas: [OMDb API](https://www.omdbapi.com/).
-- Prêmios: [Wikidata](https://www.wikidata.org/).
+- Oscar: [DLu/oscar_data](https://github.com/DLu/oscar_data), licença BSD-2-Clause, baseado na base oficial da Academia.
+- Emmy: [Wikidata](https://www.wikidata.org/) (CC0).
+
+## Como funcionam notas e prêmios
+
+- As notas externas são buscadas na OMDb só quando um usuário logado abre um título que ainda não tem nota. Um job diário processa a fila de pedidos e renova as notas antigas, sem passar da cota gratuita (1.000 por dia, divididas entre sob demanda e job).
+- O selo do Oscar (filmes) e do Emmy (séries) aparece vazado quando o título foi só indicado, dourado quando venceu e dourado brilhando quando venceu uma categoria principal.
+
+### Limitações conhecidas dos prêmios
+
+Não são bugs. Elas vêm das fontes de dados gratuitas usadas pelo projeto.
+
+- **Filmes (Oscar):** os dados vêm de um dataset completo da Academia, então vitórias, indicações, anos e categorias estão corretos. Um Oscar recente só aparece depois que o dataset é atualizado após a cerimônia, e o app importa essa atualização uma vez por semana.
+- **Séries (Emmy):** não existe uma fonte gratuita e completa dos Emmys. O **número de vitórias é confiável**, porque vem da OMDb, que usa os dados do IMDb. Por isso o app destaca as vitórias. Já o **número de indicações pode aparecer menor que o real** nas séries que venceram algum Emmy. Nesses casos a OMDb só informa as vitórias, e a lista de indicações vem do Wikidata, que é incompleta. Nas séries que só foram indicadas, sem vitória, o número de indicações vem da OMDb e está correto.
+- **Lista de prêmios da série:** a lista com categoria, ano e pessoa vem do Wikidata e pode não ter todos os prêmios, mesmo quando o total de vitórias está certo.
+- **Brilho de categoria principal nas séries:** depende de o Wikidata registrar a vitória em uma categoria principal (Série de Drama, Comédia ou Limitada, ou Ator e Atriz Principal). Se o registro faltar, a série aparece dourada, sem brilho.
+- **Títulos sem IMDb ID no TMDB:** não exibem notas externas nem selo de prêmios.
+- **Resultados de busca:** o selo aparece para os títulos que já estão salvos no banco. Um título que aparece pela primeira vez é salvo em segundo plano e passa a mostrar o selo na próxima vez que surgir.
 
 ## Licença
 

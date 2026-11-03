@@ -90,6 +90,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasKey(x => x.TitleId);
             e.HasOne(x => x.Title).WithOne(x => x.ExternalRating).HasForeignKey<ExternalRating>(x => x.TitleId);
             e.Property(x => x.Imdb).HasPrecision(3, 1);
+            e.Property(x => x.AwardsText).HasMaxLength(300);
             e.HasIndex(x => x.NextRefreshAt);
         });
 
@@ -116,8 +117,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
         b.Entity<Award>(e =>
         {
-            e.HasOne(x => x.Title).WithMany(x => x.Awards).HasForeignKey(x => x.TitleId);
-            e.HasIndex(x => x.TitleId);
+            e.HasIndex(x => x.ImdbId);
+            e.HasIndex(x => x.Source);
+            e.Property(x => x.ImdbId).HasMaxLength(20);
+            e.Property(x => x.Source).HasMaxLength(20);
             e.Property(x => x.Category).HasMaxLength(200);
             e.Property(x => x.Person).HasMaxLength(200);
         });

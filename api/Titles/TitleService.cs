@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Maratona.Api.Titles;
 
-public class TitleService(AppDbContext db, TmdbClient tmdb, ILogger<TitleService> logger)
+public class TitleService(AppDbContext db, TmdbClient tmdb, TitleWarmupQueue warmup, ILogger<TitleService> logger)
 {
     public static readonly TimeSpan CacheAge = TimeSpan.FromDays(7);
 
@@ -94,16 +94,26 @@ public class TitleService(AppDbContext db, TmdbClient tmdb, ILogger<TitleService
         var cached = await db.Titles
             .AsNoTracking()
             .Include(t => t.ExternalRating)
-            .Include(t => t.Awards)
             .Where(t => t.MediaType == type && ids.Contains(t.TmdbId))
             .ToDictionaryAsync(t => t.TmdbId, ct);
-        return list.Select(i => TitleMapper.ToCard(type, i, cached.GetValueOrDefault(i.Id))).ToList();
+        warmup.Enqueue(type, ids.Where(id => !cached.ContainsKey(id)));
+        var imdbIds = cached.Values.Where(t => t.ImdbId != null).Select(t => t.ImdbId!).ToList();
+        var awards = (await db.Awards.AsNoTracking().Where(a => imdbIds.Contains(a.ImdbId)).ToListAsync(ct))
+            .ToLookup(a => a.ImdbId);
+        return list.Select(i =>
+        {
+            var title = cached.GetValueOrDefault(i.Id);
+            return TitleMapper.ToCard(type, i, title, title?.ImdbId is null ? [] : awards[title.ImdbId]);
+        }).ToList();
     }
+
+    public async Task<List<Award>> AwardsFor(Title title, CancellationToken ct) => title.ImdbId is null
+        ? []
+        : await db.Awards.AsNoTracking().Where(a => a.ImdbId == title.ImdbId).ToListAsync(ct);
 
     private IQueryable<Title> FullQuery() => db.Titles
         .Include(t => t.Seasons)
         .Include(t => t.ExternalRating)
-        .Include(t => t.Awards)
         .AsSplitQuery();
 
     private Task<Season?> SeasonQuery(int titleId, int number, CancellationToken ct) => db.Seasons

@@ -58,6 +58,12 @@ namespace Maratona.Api.Data.Migrations
                         .HasColumnType("character varying(200)")
                         .HasColumnName("category");
 
+                    b.Property<string>("ImdbId")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("imdb_id");
+
                     b.Property<bool>("IsMajor")
                         .HasColumnType("boolean")
                         .HasColumnName("is_major");
@@ -73,23 +79,28 @@ namespace Maratona.Api.Data.Migrations
                         .HasColumnType("character varying(200)")
                         .HasColumnName("person");
 
-                    b.Property<int>("TitleId")
-                        .HasColumnType("integer")
-                        .HasColumnName("title_id");
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("source");
 
                     b.Property<bool>("Won")
                         .HasColumnType("boolean")
                         .HasColumnName("won");
 
-                    b.Property<int>("Year")
+                    b.Property<int?>("Year")
                         .HasColumnType("integer")
                         .HasColumnName("year");
 
                     b.HasKey("Id")
                         .HasName("pk_awards");
 
-                    b.HasIndex("TitleId")
-                        .HasDatabaseName("ix_awards_title_id");
+                    b.HasIndex("ImdbId")
+                        .HasDatabaseName("ix_awards_imdb_id");
+
+                    b.HasIndex("Source")
+                        .HasDatabaseName("ix_awards_source");
 
                     b.ToTable("awards", (string)null);
                 });
@@ -152,6 +163,19 @@ namespace Maratona.Api.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("atualizado_em");
 
+                    b.Property<string>("AwardsText")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("awards_text");
+
+                    b.Property<int?>("EmmyNominations")
+                        .HasColumnType("integer")
+                        .HasColumnName("emmy_nominations");
+
+                    b.Property<int?>("EmmyWins")
+                        .HasColumnType("integer")
+                        .HasColumnName("emmy_wins");
+
                     b.Property<decimal?>("Imdb")
                         .HasPrecision(3, 1)
                         .HasColumnType("numeric(3,1)")
@@ -172,6 +196,14 @@ namespace Maratona.Api.Data.Migrations
                     b.Property<bool>("NotFound")
                         .HasColumnType("boolean")
                         .HasColumnName("not_found");
+
+                    b.Property<int?>("OscarNominations")
+                        .HasColumnType("integer")
+                        .HasColumnName("oscar_nominations");
+
+                    b.Property<int?>("OscarWins")
+                        .HasColumnType("integer")
+                        .HasColumnName("oscar_wins");
 
                     b.Property<int?>("RottenTomatoes")
                         .HasColumnType("integer")
@@ -816,18 +848,6 @@ namespace Maratona.Api.Data.Migrations
                     b.ToTable("lists", (string)null);
                 });
 
-            modelBuilder.Entity("Maratona.Api.Data.Entities.Award", b =>
-                {
-                    b.HasOne("Maratona.Api.Data.Entities.Title", "Title")
-                        .WithMany("Awards")
-                        .HasForeignKey("TitleId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_awards_titles_title_id");
-
-                    b.Navigation("Title");
-                });
-
             modelBuilder.Entity("Maratona.Api.Data.Entities.Episode", b =>
                 {
                     b.HasOne("Maratona.Api.Data.Entities.Season", "Season")
@@ -1147,8 +1167,6 @@ namespace Maratona.Api.Data.Migrations
 
             modelBuilder.Entity("Maratona.Api.Data.Entities.Title", b =>
                 {
-                    b.Navigation("Awards");
-
                     b.Navigation("ExternalRating");
 
                     b.Navigation("Seasons");

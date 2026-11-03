@@ -15,7 +15,7 @@ Arquivo de referência para continuar o projeto em qualquer máquina ou sessão 
 
 1. Estrutura e banco — concluída
 2. Integração TMDB com cache — concluída
-3. OMDb com fila e job
+3. OMDb com fila e job + prêmios (Oscar/Emmy) — concluída
 4. Autenticação e funcionalidades de usuário
 5. Front-end (pedir prints da Biblioteca e do Perfil)
 
@@ -28,11 +28,11 @@ Arquivo de referência para continuar o projeto em qualquer máquina ou sessão 
 | titles | chave natural `tmdb_id + media_type` (ids do TMDB colidem entre filme e série). `credits` em jsonb (diretores, criadores, roteiristas, top 5 elenco). `atualizado_em` controla o cache |
 | seasons | lista de temporadas vem com o título. `atualizado_em` (nulo até abrir) indica quando os episódios foram buscados |
 | episodes | buscados sob demanda ao abrir a temporada; atualizados por `(season_id, episode_number)` para manter o id estável |
-| external_ratings | notas OMDb (IMDb, Rotten Tomatoes, Metacritic opcional), `not_found`, `atualizado_em`, `next_refresh_at` |
+| external_ratings | notas OMDb (IMDb, Rotten Tomatoes, Metacritic opcional), `awards_text` e contagens `oscar_wins/oscar_nominations/emmy_wins/emmy_nominations` extraídas do texto, `not_found`, `atualizado_em`, `next_refresh_at` |
 | omdb_queue | fila de pedidos de nota com `request_count` |
 | api_usage | contador diário persistido por `bucket` (ex.: omdb-demand, omdb-job) |
 | job_runs | última execução de cada job, para rodar ao acordar se estiver atrasado (Render free dorme) |
-| awards | Oscar (filmes) e Emmy (séries), ano, categoria, pessoa, `won`, `is_major` |
+| awards | ligado por `imdb_id` (não por título), `source` = oscar_data ou wikidata, ano da cerimônia, categoria em português, pessoa, `won`, `is_major` |
 | library_entries | fonte única da nota do filme/série inteira, watchlist, assistido |
 | season_entries | fonte única da nota da temporada, temporada assistida |
 | reviews | só texto + spoiler. `season_id` nulo = review principal. Um review por usuário por título/temporada. A nota exibida vem de library_entries/season_entries |
@@ -70,15 +70,23 @@ Card: `tmdbId, mediaType, name, year, posterPath, ratings, award`. `award.status
 ## OMDb
 
 - `imdb_id` vem do TMDB (detalhes do filme ou `external_ids` da série).
-- Busca sob demanda só para usuário logado e só quando o título ainda não tem nota. Visitante vê as notas já salvas.
-- Cota diária configurável: cerca de 700 sob demanda e 300 para o job. `OMDB_ENABLED=false` desliga tudo.
-- Renovação: filmes antigos a cada 3–6 meses; lançamentos e séries no ar a cada 1–2 semanas no primeiro mês, depois espaçando. Job renova do mais antigo para o mais novo até acabar a cota.
-- Metacritic pode faltar: tratar como nulo.
+- Busca sob demanda só para usuário logado (JWT válido) e só quando o título ainda não tem nota. Visitante vê as notas já salvas e não entra na fila.
+- Ao abrir sem nota: soma 1 em `omdb_queue.request_count`; se houver cota sob demanda, busca na hora (timeout 5 s) e tira da fila. Sem cota, a página abre sem notas.
+- Cota: `api_usage` por dia (UTC) e bucket `omdb-demand` / `omdb-job`. Reserva atômica (`UPDATE ... WHERE calls < limite`) antes de cada chamada. Se a OMDb responder "Request limit reached", os dois buckets do dia são marcados como cheios.
+- Limites: `OMDB_DAILY_LIMIT_DEMAND` (padrão 700) e `OMDB_DAILY_LIMIT_JOB` (padrão 300). `OMDB_ENABLED=false` desliga tudo.
+- Job diário `omdb`, na ordem, até acabar a cota do job: fila (mais pedidos primeiro), renovações vencidas (`next_refresh_at`, do mais antigo para o mais novo), títulos sem nota (mais populares primeiro).
+- Renovação (`RefreshSchedule`): até 30 dias do lançamento = 7 dias; até 90 = 14; filmes até 180 = 30, até 1 ano = 60, depois 120 dias. Séries no ar contam da última exibição: 7 / 14 / 30 dias. Não encontrado = 30 dias.
+- Metacritic e Rotten Tomatoes podem faltar: ficam nulos.
 
 ## Prêmios
 
-- Fonte: Wikidata (SPARQL público, sem conta), ligação pelo `imdb_id`, job semanal. User-Agent com nome do projeto e link do GitHub.
-- Selo: indicado = contorno vazio; venceu = dourado; venceu categoria principal = dourado brilhando.
+- Testado antes de implementar: o Wikidata tinha 8 das 13 indicações e 4 das 7 vitórias do Oppenheimer, e cobria mal os Emmys (Better Call Saul com 1 de ~53 indicações).
+- Oscar: dataset [DLu/oscar_data](https://github.com/DLu/oscar_data) (BSD-2), coluna `FilmId` = IMDb ID. Job `oscar-import` semanal substitui tudo do source `oscar_data`. Linhas com vários filmes (`tt1|tt2`) viram um registro por filme. Ano = ano da cerimônia.
+- Emmy: Wikidata, propriedade P345 = IMDb ID, lotes de 10 séries, job diário `emmy-wikidata` para séries não verificadas há 30 dias (`titles.awards_checked_at`). Só categorias "Primetime Emmy Award for Outstanding ...". Registros repetidos agrupados por categoria + ano.
+- Contagem do selo: maior valor entre os registros de prêmios e as contagens do texto `Awards` da OMDb (ex.: "Won 16 Primetime Emmys", "Nominated for 53 Primetime Emmys"). Nas séries vencedoras, o número de indicações pode ficar menor que o real.
+- Selo (`award`): `kind` oscar/emmy, `status` nominated (vazado) / won (dourado) / major (dourado brilhando), `wins`, `nominations`. `major` só quando um registro confirma vitória em categoria principal.
+- Busca e home: títulos que ainda não estão no banco entram numa fila em memória (`TitleWarmupQueue`) e são gravados em segundo plano; o selo aparece a partir da próxima exibição.
+- Créditos obrigatórios no README e no rodapé: TMDB, OMDb, oscar_data, Wikidata.
 - Principais Oscar: Filme, Direção, Ator, Atriz, Ator Coadjuvante, Atriz Coadjuvante, Roteiro Original, Roteiro Adaptado.
 - Principais Emmy: Série de Drama, Série de Comédia, Série Limitada, Ator Principal, Atriz Principal.
 

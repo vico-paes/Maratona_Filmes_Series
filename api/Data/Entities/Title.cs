@@ -21,7 +21,6 @@ public class Title
     public DateTime AtualizadoEm { get; set; }
     public DateTime? AwardsCheckedAt { get; set; }
     public List<Season> Seasons { get; set; } = [];
-    public List<Award> Awards { get; set; } = [];
     public ExternalRating? ExternalRating { get; set; }
 }
 

@@ -1,5 +1,7 @@
 using System.ComponentModel.DataAnnotations;
+using System.Security.Claims;
 using Maratona.Api.Data.Entities;
+using Maratona.Api.Omdb;
 using Maratona.Api.Tmdb;
 using Microsoft.Extensions.Caching.Memory;
 
@@ -44,16 +46,38 @@ public static class TitleEndpoints
             await service.ToCards(MediaType.Tv, (await series)?.Results ?? [], ct)));
     }
 
-    private static async Task<IResult> Movie([Range(1, int.MaxValue)] int tmdbId, TitleService service, CancellationToken ct)
-    {
-        var title = await service.Get(MediaType.Movie, tmdbId, ct);
-        return title is null ? Results.NotFound() : Results.Ok(TitleMapper.ToDetails(title));
-    }
+    private static Task<IResult> Movie(
+        [Range(1, int.MaxValue)] int tmdbId,
+        ClaimsPrincipal user,
+        TitleService service,
+        OmdbService omdb,
+        CancellationToken ct) => Details(MediaType.Movie, tmdbId, user, service, omdb, ct);
 
-    private static async Task<IResult> Tv([Range(1, int.MaxValue)] int tmdbId, TitleService service, CancellationToken ct)
+    private static Task<IResult> Tv(
+        [Range(1, int.MaxValue)] int tmdbId,
+        ClaimsPrincipal user,
+        TitleService service,
+        OmdbService omdb,
+        CancellationToken ct) => Details(MediaType.Tv, tmdbId, user, service, omdb, ct);
+
+    private static async Task<IResult> Details(
+        MediaType type,
+        int tmdbId,
+        ClaimsPrincipal user,
+        TitleService service,
+        OmdbService omdb,
+        CancellationToken ct)
     {
-        var title = await service.Get(MediaType.Tv, tmdbId, ct);
-        return title is null ? Results.NotFound() : Results.Ok(TitleMapper.ToDetails(title));
+        var title = await service.Get(type, tmdbId, ct);
+        if (title is null)
+        {
+            return Results.NotFound();
+        }
+        if (user.Identity?.IsAuthenticated == true)
+        {
+            await omdb.OnTitleOpened(title, ct);
+        }
+        return Results.Ok(TitleMapper.ToDetails(title, await service.AwardsFor(title, ct)));
     }
 
     private static async Task<IResult> Season(

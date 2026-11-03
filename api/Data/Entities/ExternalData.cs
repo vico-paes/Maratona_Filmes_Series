@@ -8,6 +8,11 @@ public class ExternalRating
     public int? ImdbVotes { get; set; }
     public int? RottenTomatoes { get; set; }
     public int? Metacritic { get; set; }
+    public string? AwardsText { get; set; }
+    public int? OscarWins { get; set; }
+    public int? OscarNominations { get; set; }
+    public int? EmmyWins { get; set; }
+    public int? EmmyNominations { get; set; }
     public bool NotFound { get; set; }
     public DateTime AtualizadoEm { get; set; }
     public DateTime NextRefreshAt { get; set; }
@@ -37,10 +42,10 @@ public class JobRun
 public class Award
 {
     public int Id { get; set; }
-    public int TitleId { get; set; }
-    public Title Title { get; set; } = null!;
+    public string ImdbId { get; set; } = "";
+    public string Source { get; set; } = "";
     public AwardKind Kind { get; set; }
-    public int Year { get; set; }
+    public int? Year { get; set; }
     public string Category { get; set; } = "";
     public string? Person { get; set; }
     public bool Won { get; set; }

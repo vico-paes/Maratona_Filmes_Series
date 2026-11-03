@@ -4,9 +4,9 @@ namespace Maratona.Api.Titles;
 
 public record RatingsDto(decimal? Imdb, int? ImdbVotes, int? RottenTomatoes, int? Metacritic, DateTime AtualizadoEm);
 
-public record AwardBadgeDto(AwardKind Kind, string Status);
+public record AwardBadgeDto(AwardKind Kind, string Status, int Wins, int Nominations);
 
-public record AwardDto(AwardKind Kind, int Year, string Category, string? Person, bool Won, bool IsMajor);
+public record AwardDto(AwardKind Kind, int? Year, string Category, string? Person, bool Won, bool IsMajor);
 
 public record TitleCardDto(
     int TmdbId,

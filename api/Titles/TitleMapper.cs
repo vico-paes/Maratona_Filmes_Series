@@ -14,37 +14,32 @@ public static class TitleMapper
             ? null
             : new RatingsDto(rating.Imdb, rating.ImdbVotes, rating.RottenTomatoes, rating.Metacritic, rating.AtualizadoEm);
 
-    public static AwardBadgeDto? ToBadge(MediaType type, IEnumerable<Award> awards)
+    public static AwardBadgeDto? ToBadge(MediaType type, ExternalRating? rating, IEnumerable<Award> awards)
     {
         var kind = type == MediaType.Movie ? AwardKind.Oscar : AwardKind.Emmy;
         var list = awards.Where(a => a.Kind == kind).ToList();
-        if (list.Count == 0)
+        var omdbWins = (kind == AwardKind.Oscar ? rating?.OscarWins : rating?.EmmyWins) ?? 0;
+        var omdbNominations = (kind == AwardKind.Oscar ? rating?.OscarNominations : rating?.EmmyNominations) ?? 0;
+        var wins = Math.Max(list.Count(a => a.Won), omdbWins);
+        var nominations = Math.Max(Math.Max(list.Count, omdbNominations), wins);
+        if (nominations == 0)
         {
             return null;
         }
-        var status = list.Any(a => a.Won && a.IsMajor) ? "major" : list.Any(a => a.Won) ? "won" : "nominated";
-        return new AwardBadgeDto(kind, status);
+        var status = wins == 0 ? "nominated" : list.Any(a => a.Won && a.IsMajor) ? "major" : "won";
+        return new AwardBadgeDto(kind, status, wins, nominations);
     }
 
-    public static TitleCardDto ToCard(Title title) => new(
-        title.TmdbId,
-        title.MediaType,
-        title.Name,
-        title.ReleaseDate?.Year,
-        title.PosterPath,
-        ToRatings(title.ExternalRating),
-        ToBadge(title.MediaType, title.Awards));
-
-    public static TitleCardDto ToCard(MediaType type, TmdbListItem item, Title? cached) => new(
+    public static TitleCardDto ToCard(MediaType type, TmdbListItem item, Title? cached, IEnumerable<Award> awards) => new(
         item.Id,
         type,
         (type == MediaType.Movie ? item.Title : item.Name) ?? "",
         ParseDate(type == MediaType.Movie ? item.ReleaseDate : item.FirstAirDate)?.Year,
         item.PosterPath,
         ToRatings(cached?.ExternalRating),
-        cached is null ? null : ToBadge(type, cached.Awards));
+        ToBadge(type, cached?.ExternalRating, awards));
 
-    public static TitleDetailsDto ToDetails(Title title) => new(
+    public static TitleDetailsDto ToDetails(Title title, List<Award> awards) => new(
         title.Id,
         title.TmdbId,
         title.MediaType,
@@ -70,9 +65,11 @@ public static class TitleMapper
             .Select(s => new SeasonSummaryDto(s.SeasonNumber, s.Name, s.PosterPath, s.AirDate, s.EpisodeCount))
             .ToList(),
         ToRatings(title.ExternalRating),
-        ToBadge(title.MediaType, title.Awards),
-        title.Awards
-            .OrderByDescending(a => a.Year)
+        ToBadge(title.MediaType, title.ExternalRating, awards),
+        awards
+            .Where(a => a.Kind == (title.MediaType == MediaType.Movie ? AwardKind.Oscar : AwardKind.Emmy))
+            .OrderByDescending(a => a.Won)
+            .ThenByDescending(a => a.Year)
             .ThenByDescending(a => a.IsMajor)
             .Select(a => new AwardDto(a.Kind, a.Year, a.Category, a.Person, a.Won, a.IsMajor))
             .ToList(),
