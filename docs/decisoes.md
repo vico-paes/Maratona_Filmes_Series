@@ -14,7 +14,7 @@ Arquivo de referência para continuar o projeto em qualquer máquina ou sessão 
 ## Etapas
 
 1. Estrutura e banco — concluída
-2. Integração TMDB com cache
+2. Integração TMDB com cache — concluída
 3. OMDb com fila e job
 4. Autenticação e funcionalidades de usuário
 5. Front-end (pedir prints da Biblioteca e do Perfil)
@@ -45,9 +45,25 @@ Notas: armazenadas de 0 a 10 com passo 0.5. Estrelas = nota / 2.
 
 ## TMDB
 
-- Cache por título: ao abrir, se `atualizado_em` > 7 dias, busca de novo.
-- Nada pode passar de 6 meses sem atualização: job diário também renova os mais antigos.
-- Job diário: em cartaz, em breve, séries no ar, temporadas novas e `/changes`.
+- Idioma `pt-BR`, região `BR`. Se a sinopse vier vazia em português, usa a de `en-US`.
+- Cache por título: ao abrir, se `atualizado_em` > 7 dias, busca de novo. Se o TMDB falhar e houver cache, devolve o cache.
+- Episódios: buscados ao abrir a temporada (`/titles/tv/{id}/seasons/{n}`), com o mesmo limite de 7 dias. Se o número de episódios da temporada mudar no TMDB, `seasons.atualizado_em` volta a nulo e força nova busca.
+- Busca e listas da home não são gravadas no banco; os cards são enriquecidos com notas e prêmios do que já está no banco. Listas da home ficam 1 hora em cache de memória.
+- Nada pode passar de 6 meses sem atualização: o job renova até 500 títulos por dia com mais de 90 dias.
+- Job diário `tmdb-sync` (classe base `DailyJob`, checa a cada 30 min se passou 1 dia desde `job_runs.last_run_at`): 2 páginas de em cartaz, em breve, populares, séries no ar, no ar hoje e séries populares, mais `/changes` dos últimos 2 dias (só títulos que já estão no banco), mais os antigos.
+- Logs do `HttpClient` em Warning para a chave da API não aparecer em log.
+
+### Endpoints
+
+| Rota | Descrição |
+|---|---|
+| `GET /home` | `nowPlaying`, `popularMovies`, `onTheAir`, `popularSeries` (cards) |
+| `GET /titles/search?q=&page=` | `{ movies, series }` separados |
+| `GET /titles/movie/{tmdbId}` | detalhes do filme |
+| `GET /titles/tv/{tmdbId}` | detalhes da série com lista de temporadas |
+| `GET /titles/tv/{tmdbId}/seasons/{n}` | temporada com episódios |
+
+Card: `tmdbId, mediaType, name, year, posterPath, ratings, award`. `award.status` = `nominated`, `won` ou `major`.
 - Imagens nunca baixadas: só `poster_path`, URL montada com a CDN do TMDB.
 - Exibir logo do TMDB e o texto: "This product uses the TMDB API but is not endorsed or certified by TMDB."
 
