@@ -12,6 +12,7 @@ public class TmdbSyncJob(IServiceScopeFactory scopes, ILogger<TmdbSyncJob> logge
     private const int MaxChangePages = 50;
     private const int StaleBatch = 500;
     private static readonly TimeSpan StaleAge = TimeSpan.FromDays(90);
+    private static readonly TimeSpan FollowedAge = TimeSpan.FromDays(3);
 
     private static readonly (string Path, MediaType Type)[] Lists =
     [
@@ -65,6 +66,19 @@ public class TmdbSyncJob(IServiceScopeFactory scopes, ILogger<TmdbSyncJob> logge
                 }
             }
         }
+
+        var followedLimit = DateTime.UtcNow - FollowedAge;
+        var followed = await db.Titles
+            .Where(t => t.MediaType == MediaType.Tv
+                && (t.Status == "Returning Series" || t.Status == "In Production")
+                && t.AtualizadoEm < followedLimit
+                && (db.LibraryEntries.Any(e => e.TitleId == t.Id && e.Watched)
+                    || db.SeasonEntries.Any(e => e.Season.TitleId == t.Id && e.Watched)))
+            .OrderBy(t => t.AtualizadoEm)
+            .Take(StaleBatch)
+            .Select(t => t.TmdbId)
+            .ToListAsync(ct);
+        targets.UnionWith(followed.Select(id => (MediaType.Tv, id)));
 
         var limit = DateTime.UtcNow - StaleAge;
         var stale = await db.Titles

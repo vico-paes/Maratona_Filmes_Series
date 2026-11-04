@@ -21,7 +21,7 @@ public record CastDto(string Name, string? Character, string? ProfilePath);
 
 public record CreditsDto(List<string> Directors, List<string> Creators, List<string> Writers, List<CastDto> Cast);
 
-public record SeasonSummaryDto(int SeasonNumber, string Name, string? PosterPath, DateOnly? AirDate, int EpisodeCount);
+public record SeasonSummaryDto(int Id, int SeasonNumber, string Name, string? PosterPath, DateOnly? AirDate, int EpisodeCount);
 
 public record TitleDetailsDto(
     int Id,

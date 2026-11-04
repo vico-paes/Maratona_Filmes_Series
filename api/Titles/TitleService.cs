@@ -107,6 +107,20 @@ public class TitleService(AppDbContext db, TmdbClient tmdb, TitleWarmupQueue war
         }).ToList();
     }
 
+    public async Task<Dictionary<int, TitleCardDto>> Cards(IEnumerable<int> titleIds, CancellationToken ct)
+    {
+        var ids = titleIds.Distinct().ToList();
+        var titles = await db.Titles
+            .AsNoTracking()
+            .Include(t => t.ExternalRating)
+            .Where(t => ids.Contains(t.Id))
+            .ToListAsync(ct);
+        var imdbIds = titles.Where(t => t.ImdbId != null).Select(t => t.ImdbId!).ToList();
+        var awards = (await db.Awards.AsNoTracking().Where(a => imdbIds.Contains(a.ImdbId)).ToListAsync(ct))
+            .ToLookup(a => a.ImdbId);
+        return titles.ToDictionary(t => t.Id, t => TitleMapper.ToCard(t, t.ImdbId is null ? [] : awards[t.ImdbId]));
+    }
+
     public async Task<List<Award>> AwardsFor(Title title, CancellationToken ct) => title.ImdbId is null
         ? []
         : await db.Awards.AsNoTracking().Where(a => a.ImdbId == title.ImdbId).ToListAsync(ct);

@@ -5,7 +5,11 @@ namespace Maratona.Api.Data;
 
 public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
 {
-    private const string RatingCheck = "rating IS NULL OR (rating >= 0 AND rating <= 10 AND rating * 2 = trunc(rating * 2))";
+    private const string RatingCheck = """
+        (rating IS NULL AND rating_style IS NULL) OR (rating * 2 = trunc(rating * 2) AND (
+            (rating_style = 'Numeric' AND rating BETWEEN 0 AND 10) OR
+            (rating_style = 'Stars' AND rating BETWEEN 0.5 AND 5)))
+        """;
 
     public DbSet<User> Users => Set<User>();
     public DbSet<Follow> Follows => Set<Follow>();

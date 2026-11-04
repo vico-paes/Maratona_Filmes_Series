@@ -119,6 +119,13 @@ No plano gratuito o Render "dorme" após um tempo sem acesso. Os jobs diários g
 - Oscar: [DLu/oscar_data](https://github.com/DLu/oscar_data), licença BSD-2-Clause, baseado na base oficial da Academia.
 - Emmy: [Wikidata](https://www.wikidata.org/) (CC0).
 
+## Segurança
+
+- Senhas guardadas com hash (PBKDF2 do ASP.NET Identity) e login com token JWT.
+- Limite de requisições: 300 por minuto por IP, 120 por minuto por usuário e 10 por minuto por IP no login, cadastro e alterações de conta.
+- CORS liberado apenas para a URL do front definida em `FRONTEND_URL`.
+- Todas as entradas são validadas, e as notas privadas nunca aparecem em rotas públicas.
+
 ## Como funcionam notas e prêmios
 
 - As notas externas são buscadas na OMDb só quando um usuário logado abre um título que ainda não tem nota. Um job diário processa a fila de pedidos e renova as notas antigas, sem passar da cota gratuita (1.000 por dia, divididas entre sob demanda e job).

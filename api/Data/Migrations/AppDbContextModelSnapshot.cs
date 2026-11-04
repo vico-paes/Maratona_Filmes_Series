@@ -328,6 +328,11 @@ namespace Maratona.Api.Data.Migrations
                         .HasColumnType("numeric(3,1)")
                         .HasColumnName("rating");
 
+                    b.Property<string>("RatingStyle")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("rating_style");
+
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
@@ -348,7 +353,7 @@ namespace Maratona.Api.Data.Migrations
 
                     b.ToTable("library_entries", null, t =>
                         {
-                            t.HasCheckConstraint("ck_library_entries_rating", "rating IS NULL OR (rating >= 0 AND rating <= 10 AND rating * 2 = trunc(rating * 2))");
+                            t.HasCheckConstraint("ck_library_entries_rating", "(rating IS NULL AND rating_style IS NULL) OR (rating * 2 = trunc(rating * 2) AND (\n    (rating_style = 'Numeric' AND rating BETWEEN 0 AND 10) OR\n    (rating_style = 'Stars' AND rating BETWEEN 0.5 AND 5)))");
                         });
                 });
 
@@ -608,6 +613,11 @@ namespace Maratona.Api.Data.Migrations
                         .HasColumnType("numeric(3,1)")
                         .HasColumnName("rating");
 
+                    b.Property<string>("RatingStyle")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("rating_style");
+
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
@@ -628,7 +638,7 @@ namespace Maratona.Api.Data.Migrations
 
                     b.ToTable("season_entries", null, t =>
                         {
-                            t.HasCheckConstraint("ck_season_entries_rating", "rating IS NULL OR (rating >= 0 AND rating <= 10 AND rating * 2 = trunc(rating * 2))");
+                            t.HasCheckConstraint("ck_season_entries_rating", "(rating IS NULL AND rating_style IS NULL) OR (rating * 2 = trunc(rating * 2) AND (\n    (rating_style = 'Numeric' AND rating BETWEEN 0 AND 10) OR\n    (rating_style = 'Stars' AND rating BETWEEN 0.5 AND 5)))");
                         });
                 });
 

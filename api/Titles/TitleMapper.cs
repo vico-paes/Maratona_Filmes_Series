@@ -30,6 +30,15 @@ public static class TitleMapper
         return new AwardBadgeDto(kind, status, wins, nominations);
     }
 
+    public static TitleCardDto ToCard(Title title, IEnumerable<Award> awards) => new(
+        title.TmdbId,
+        title.MediaType,
+        title.Name,
+        title.ReleaseDate?.Year,
+        title.PosterPath,
+        ToRatings(title.ExternalRating),
+        ToBadge(title.MediaType, title.ExternalRating, awards));
+
     public static TitleCardDto ToCard(MediaType type, TmdbListItem item, Title? cached, IEnumerable<Award> awards) => new(
         item.Id,
         type,
@@ -62,7 +71,7 @@ public static class TitleMapper
             title.Credits.Cast.Select(c => new CastDto(c.Name, c.Character, c.ProfilePath)).ToList()),
         title.Seasons
             .OrderBy(s => s.SeasonNumber)
-            .Select(s => new SeasonSummaryDto(s.SeasonNumber, s.Name, s.PosterPath, s.AirDate, s.EpisodeCount))
+            .Select(s => new SeasonSummaryDto(s.Id, s.SeasonNumber, s.Name, s.PosterPath, s.AirDate, s.EpisodeCount))
             .ToList(),
         ToRatings(title.ExternalRating),
         ToBadge(title.MediaType, title.ExternalRating, awards),

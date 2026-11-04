@@ -10,6 +10,7 @@ public class LibraryEntry
     public bool Watched { get; set; }
     public DateTime? WatchedAt { get; set; }
     public decimal? Rating { get; set; }
+    public RatingStyle? RatingStyle { get; set; }
     public DateTime AddedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }
@@ -23,6 +24,7 @@ public class SeasonEntry
     public bool Watched { get; set; }
     public DateTime? WatchedAt { get; set; }
     public decimal? Rating { get; set; }
+    public RatingStyle? RatingStyle { get; set; }
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }
 
