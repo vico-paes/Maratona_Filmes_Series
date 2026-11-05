@@ -17,7 +17,7 @@ Arquivo de referência para continuar o projeto em qualquer máquina ou sessão 
 2. Integração TMDB com cache — concluída
 3. OMDb com fila e job + prêmios (Oscar/Emmy) — concluída
 4. Autenticação e funcionalidades de usuário — concluída
-5. Front-end (pedir prints da Biblioteca e do Perfil)
+5. Front-end — concluída
 
 ## Modelo de dados
 
@@ -109,6 +109,8 @@ Card: `tmdbId, mediaType, name, year, posterPath, ratings, award`. `award.status
 - Desmarcar "assistido" tira o título da Biblioteca, mas a nota numérica, o review e a Nota privada continuam salvos, e o review continua no perfil com a nota.
 - Marcar todas as temporadas (número > 0) como assistidas marca a série como assistida. Desmarcar qualquer temporada tira o "assistido" da série; as outras temporadas e as notas continuam (`titleWatched` na resposta).
 - Temporada nova (`GET /me/new-seasons` e `newSeasons` no card da Biblioteca): só para séries que a pessoa terminou (série marcada como assistida). Conta toda temporada com número > 0, não assistida, com data de estreia depois do dia em que a série foi marcada como assistida. `released` = false quando a estreia ainda não chegou ("em breve"). Séries em andamento não geram aviso.
+- Data em que assistiu: `PUT .../watched` aceita `date` (yyyy-mm-dd, de 1900 até hoje) e grava ao meio-dia UTC daquele dia. Sem `date`, mantém a data que já existia ou usa agora. Serve para catalogar algo visto há tempo.
+- Assistindo: série com pelo menos uma temporada assistida e ainda não marcada como assistida. Ao marcar uma temporada, a série ganha uma entrada na biblioteca (mesmo sem watchlist); ela só some quando não há watchlist, assistido, nota nem temporada assistida. Aparece em "Tudo" e no filtro `watching`, com `watching: true` no card.
 - O job `tmdb-sync` atualiza diariamente as séries no ar que alguém assistiu, se o cache tiver mais de 3 dias, para detectar temporadas novas.
 - Um review por usuário por título (principal) e por temporada; salvar de novo edita. Review só tem texto e spoiler.
 - Nota privada: uma por título, por temporada ou por episódio; salvar com texto vazio apaga. Nunca aparece em rotas públicas.
@@ -126,11 +128,11 @@ Card: `tmdbId, mediaType, name, year, posterPath, ratings, award`. `award.status
 | `PUT /me/profile` | sim | nome, bio, avatar/capa (https), `ratingStyle` stars/numeric, `convertRatings` |
 | `GET /me/rating-conversion?to=` | sim | prévia da conversão de notas antes de trocar o estilo |
 | `PUT /me/favorites` | sim | `{ movies: [{titleId, crown}], series: [...] }` |
-| `GET /me/library?type=&status=&sort=&page=` | sim | type all/movie/tv; status all/watchlist/watched; sort unwatched, watched, added, recent, rating_desc, rating_asc, imdb, year, az |
+| `GET /me/library?type=&status=&sort=&page=` | sim | type all/movie/tv; status all/watchlist/watching/watched; sort unwatched, watched, added, recent, rating_desc, rating_asc, imdb, year, az |
 | `GET /me/new-seasons` | sim | temporadas novas das séries que a pessoa terminou |
 | `GET /me/titles/{titleId}` | sim | estado do título: entrada, temporadas, meus reviews, minhas notas privadas |
-| `PUT /me/titles/{titleId}/watchlist` `/watched` `/rating` | sim | `{ value }` ou `{ rating, style? }` (null limpa; sem `style` usa o do perfil) |
-| `PUT /me/seasons/{seasonId}/watched` `/rating` | sim | temporada |
+| `PUT /me/titles/{titleId}/watchlist` `/watched` `/rating` | sim | `{ value }`, `{ value, date? }` ou `{ rating, style? }` (null limpa; sem `style` usa o do perfil) |
+| `PUT /me/seasons/{seasonId}/watched` `/rating` | sim | temporada (`watched` também aceita `date`) |
 | `PUT /me/titles/{titleId}/review` | sim | `{ seasonId?, body, spoiler }` |
 | `DELETE /me/reviews/{id}` | sim | apaga o próprio review |
 | `PUT /me/titles/{titleId}/notes` | sim | `{ seasonId?, episodeId?, body }` (autosave) |
@@ -138,7 +140,8 @@ Card: `tmdbId, mediaType, name, year, posterPath, ratings, award`. `award.status
 | `POST/DELETE /reviews/{id}/like` | sim | curtir |
 | `GET /feed?scope=all\|following&page=` | following exige | reviews recentes com card do título |
 | `GET /users/search?q=` | não | buscar pessoas |
-| `GET /users/{username}` | não | perfil (isMe, isFollowing quando logado) |
+| `GET /users/{username}` | não | perfil (isMe, isFollowing quando logado); `recentlyWatched` traz card, data e nota |
+| `GET /users/{username}/reviews?page=` | não | todas as reviews da pessoa, com card do título |
 | `GET /users/{username}/followers` `/following` | não | listas paginadas |
 | `POST/DELETE /users/{username}/follow` | sim | seguir |
 | `GET /users/{username}/lists`, `GET /lists/{id}` | não | listas públicas (privadas só para o dono) |
@@ -148,11 +151,18 @@ Os ids usados nas rotas de usuário são os ids internos (`id` do título e das 
 
 ## Front-end
 
-- Abas: Início, Biblioteca (com sub-aba Listas), Feed, Perfil, Configurações.
-- Busca separa filmes e séries.
-- Biblioteca: filtro Tudo/Filmes/Séries; ordenação: não assistidos primeiro, assistidos primeiro, adicionados recentemente, assistidos recentemente, minha nota (maior/menor), nota IMDb, ano, A–Z.
-- Feed: cards de review (pôster, título, usuário, nota, trecho, spoiler borrado), seletor Seguindo | Todos, rolagem infinita.
-- Janela de escrita: seletor `🔒 Nota | Review`. Nota salva sozinha. Review tem botão Postar e opção de spoiler. Botão pequeno para trocar estrelas/número.
-- Nota rápida usa o estilo escolhido no perfil.
-- Séries: temporada abre em acordeão com episódios; Nota privada por episódio; review por temporada; review principal da série.
-- Perfil: bio, nome, avatar, capa, 4+4 favoritos com coroa, vistos recentes, reviews recentes, estatísticas (vistos, horas, séries concluídas), seguidores/seguindo. Próprio perfil com botões de editar; de outra pessoa com seguir.
+- Next.js (App Router) + TypeScript + Tailwind CSS 4 + ícones `lucide-react`. Páginas são componentes de cliente que falam direto com a API (`src/lib/api.ts`); sem biblioteca de estado ou de fetch.
+- Visual escuro com roxo (`--color-accent`); o dourado fica reservado para os selos de prêmio e a coroa. Pensado primeiro para celular: barra de abas embaixo no celular, abas no topo no computador.
+- Token JWT no `localStorage`; resposta 401 apaga o token e a pessoa volta a ser visitante.
+- Imagens com `<img>` direto da CDN do TMDB (sem otimização da Vercel); avatar e capa são links https externos.
+- Rotas: `/` (Início), `/busca?q=`, `/filme/{tmdbId}`, `/serie/{tmdbId}`, `/biblioteca`, `/feed`, `/u/{username}`, `/listas/{id}`, `/configuracoes`, `/entrar`, `/cadastro`.
+- Abas: Início, Biblioteca, Feed, Perfil, Configurações.
+- Busca separa filmes, séries e pessoas.
+- Biblioteca: Todos/Filmes/Séries, Tudo/Quero ver/Assistindo/Assistidos e as ordenações. Marcadores no pôster: olho (assistido), play (assistindo), marcador (quero ver) e "NOVA" para temporada nova.
+- Feed: Todos | Seguindo, cards com pôster, nota no estilo de quem deu, spoiler borrado com botão para mostrar, curtir e "carregar mais".
+- Review e Nota são separadas (decisão do usuário). Janela de review: Assisti / Quero ver, nota com botão pequeno Estrelas | 0–10 que vale só para aquela nota (converte o valor ao trocar), "Assistido em" com a data de hoje preenchida e editável, texto, spoiler, Publicar/Salvar. Nas séries, um seletor escolhe série inteira ou temporada.
+- Nota privada: painel lateral (embaixo no celular) que salva sozinho 0,8 s depois de parar de digitar e ao fechar. Existe para o título e para cada episódio.
+- Página do título: nota rápida no estilo do perfil (ou no estilo em que já foi dada), salva 0,5 s depois da última mudança.
+- Séries: temporadas em acordeão com episódios, olho para marcar a temporada e lápis para a review/nota da temporada.
+- Perfil: capa, avatar, nome, bio, seguindo/seguidores (abrem lista), editar perfil ou seguir, números, abas Visão geral / Reviews / Listas, 4+4 favoritos com coroa (editor com busca no próprio perfil), assistidos recentemente com nota e data, carrossel de reviews.
+- Configurações: perfil com prévia, estilo de nota com a janela de conversão, senha, sair e excluir conta.

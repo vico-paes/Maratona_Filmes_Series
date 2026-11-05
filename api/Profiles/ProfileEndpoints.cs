@@ -29,6 +29,8 @@ public record FavoritesRequest([MaxLength(4)] List<FavoriteItem> Movies, [MaxLen
 
 public record FavoriteDto(int Slot, bool Crown, int TitleId, TitleCardDto Title);
 
+public record WatchedItemDto(int TitleId, TitleCardDto Title, DateTime? WatchedAt, decimal? Rating, RatingStyle? RatingStyle);
+
 public record StatsDto(int MoviesWatched, int SeriesCompleted, int SeasonsWatched, int HoursWatched, int Reviews, int Lists);
 
 public record ProfileDto(
@@ -41,7 +43,7 @@ public record ProfileDto(
     DateTime CreatedAt,
     List<FavoriteDto> FavoriteMovies,
     List<FavoriteDto> FavoriteSeries,
-    List<TitleCardDto> RecentlyWatched,
+    List<WatchedItemDto> RecentlyWatched,
     List<ReviewDto> RecentReviews,
     StatsDto Stats,
     int Followers,
@@ -102,9 +104,9 @@ public static class ProfileEndpoints
             .Where(e => e.UserId == user.Id && e.Watched)
             .OrderByDescending(e => e.WatchedAt)
             .Take(12)
-            .Select(e => e.TitleId)
+            .Select(e => new { e.TitleId, e.WatchedAt, e.Rating, e.RatingStyle })
             .ToListAsync(ct);
-        var cards = await titles.Cards(favorites.Select(f => f.TitleId).Concat(recent), ct);
+        var cards = await titles.Cards(favorites.Select(f => f.TitleId).Concat(recent.Select(e => e.TitleId)), ct);
         var reviews = await ReviewQueries.Load(
             db,
             titles,
@@ -122,7 +124,7 @@ public static class ProfileEndpoints
             user.CreatedAt,
             Favorites(favorites, MediaType.Movie, cards),
             Favorites(favorites, MediaType.Tv, cards),
-            recent.Select(id => cards[id]).ToList(),
+            recent.Select(e => new WatchedItemDto(e.TitleId, cards[e.TitleId], e.WatchedAt, e.Rating, e.RatingStyle)).ToList(),
             reviews,
             await Stats(db, user.Id, ct),
             await db.Follows.CountAsync(f => f.FollowedId == user.Id, ct),

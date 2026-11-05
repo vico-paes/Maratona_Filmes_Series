@@ -1,0 +1,74 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg: #09080f;
+  --color-surface: #13111c;
+  --color-surface-2: #1c1929;
+  --color-surface-3: #262238;
+  --color-line: #2c2840;
+  --color-fg: #eeebf7;
+  --color-muted: #9a94b2;
+  --color-faint: #6a6482;
+  --color-accent: #8b5cf6;
+  --color-accent-strong: #7c3aed;
+  --color-accent-soft: #2a1f4d;
+  --color-gold: #f2c14e;
+  --color-gold-deep: #c8962a;
+  --color-danger: #f0566e;
+  --color-ok: #3ecf8e;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+}
+
+html {
+  color-scheme: dark;
+  background: var(--color-bg);
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-fg);
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--color-accent);
+  color: white;
+}
+
+.scrollbar-none {
+  scrollbar-width: none;
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+@keyframes award-glow {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 2px rgb(242 193 78 / 0.7)) drop-shadow(0 0 6px rgb(242 193 78 / 0.35));
+  }
+  50% {
+    filter: drop-shadow(0 0 4px rgb(242 193 78 / 0.95)) drop-shadow(0 0 12px rgb(242 193 78 / 0.55));
+  }
+}
+
+.award-glow {
+  animation: award-glow 2.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .award-glow {
+    animation: none;
+    filter: drop-shadow(0 0 4px rgb(242 193 78 / 0.85));
+  }
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.7);
+  cursor: pointer;
+}
+
+input[type="range"] {
+  accent-color: var(--color-accent);
+}

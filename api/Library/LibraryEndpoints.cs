@@ -11,6 +11,8 @@ namespace Maratona.Api.Library;
 
 public record FlagRequest(bool Value);
 
+public record WatchedRequest(bool Value, DateOnly? Date);
+
 public record RatingRequest(decimal? Rating, RatingStyle? Style);
 
 public record EntryDto(int TitleId, bool InWatchlist, bool Watched, DateTime? WatchedAt, decimal? Rating, RatingStyle? RatingStyle);
@@ -24,6 +26,7 @@ public record LibraryItemDto(
     TitleCardDto Title,
     bool InWatchlist,
     bool Watched,
+    bool Watching,
     DateTime? WatchedAt,
     decimal? Rating,
     RatingStyle? RatingStyle,
@@ -57,7 +60,7 @@ public static class LibraryEndpoints
         TitleService titles,
         CancellationToken ct,
         [AllowedValues("all", "movie", "tv")] string type = "all",
-        [AllowedValues("all", "watchlist", "watched")] string status = "all",
+        [AllowedValues("all", "watchlist", "watching", "watched")] string status = "all",
         [AllowedValues("unwatched", "watched", "added", "recent", "rating_desc", "rating_asc", "imdb", "year", "az")] string sort = "unwatched",
         [Range(1, 1000)] int page = 1)
     {
@@ -72,14 +75,15 @@ public static class LibraryEndpoints
         query = status switch
         {
             "watchlist" => query.Where(e => e.InWatchlist && !e.Watched),
+            "watching" => query.InProgress(db),
             "watched" => query.Where(e => e.Watched),
-            _ => query.Where(e => e.InWatchlist || e.Watched)
+            _ => query.Where(e => e.InWatchlist || e.Watched || db.SeasonEntries.Any(s => s.UserId == e.UserId && s.Season.TitleId == e.TitleId && s.Watched))
         };
         var ordered = sort switch
         {
             "watched" => query.OrderByDescending(e => e.Watched).ThenByDescending(e => e.WatchedAt),
             "added" => query.OrderByDescending(e => e.AddedAt),
-            "recent" => query.OrderBy(e => e.WatchedAt == null).ThenByDescending(e => e.WatchedAt),
+            "recent" => query.OrderBy(e => e.WatchedAt == null).ThenByDescending(e => e.WatchedAt).ThenByDescending(e => e.UpdatedAt),
             "rating_desc" => query.OrderBy(e => e.Rating == null)
                 .ThenByDescending(e => e.RatingStyle == RatingStyle.Stars ? e.Rating * 2 : e.Rating),
             "rating_asc" => query.OrderBy(e => e.Rating == null)
@@ -99,12 +103,18 @@ public static class LibraryEndpoints
         var ids = entries.Select(e => e.TitleId).ToList();
         var cards = await titles.Cards(ids, ct);
         var newSeasons = (await Watching.NewSeasons(db, userId, ids, ct)).ToLookup(s => s.TitleId);
+        var inProgress = (await db.LibraryEntries
+            .Where(e => e.UserId == userId && ids.Contains(e.TitleId))
+            .InProgress(db)
+            .Select(e => e.TitleId)
+            .ToListAsync(ct)).ToHashSet();
         var items = entries
             .Select(e => new LibraryItemDto(
                 e.TitleId,
                 cards[e.TitleId],
                 e.InWatchlist,
                 e.Watched,
+                inProgress.Contains(e.TitleId),
                 e.WatchedAt,
                 e.Rating,
                 e.RatingStyle,
@@ -153,8 +163,10 @@ public static class LibraryEndpoints
     private static Task<IResult> SetWatchlist(int titleId, FlagRequest request, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         EntryResult(Watching.ChangeEntry(db, user.UserId(), titleId, e => e.InWatchlist = request.Value, ct));
 
-    private static Task<IResult> SetWatched(int titleId, FlagRequest request, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
-        EntryResult(Watching.ChangeEntry(db, user.UserId(), titleId, e => Watching.Mark(e, request.Value), ct));
+    private static Task<IResult> SetWatched(int titleId, WatchedRequest request, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        Watching.IsValidDate(request.Date)
+            ? EntryResult(Watching.ChangeEntry(db, user.UserId(), titleId, e => Watching.Mark(e, request.Value, request.Date), ct))
+            : Task.FromResult(InvalidDate());
 
     private static async Task<IResult> SetRating(int titleId, RatingRequest request, ClaimsPrincipal user, AppDbContext db, CancellationToken ct)
     {
@@ -175,8 +187,12 @@ public static class LibraryEndpoints
         }, ct));
     }
 
-    private static Task<IResult> SetSeasonWatched(int seasonId, FlagRequest request, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
-        SeasonResult(Watching.ChangeSeason(db, user.UserId(), seasonId, e => Watching.Mark(e, request.Value), ct));
+    private static Task<IResult> SetSeasonWatched(int seasonId, WatchedRequest request, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        Watching.IsValidDate(request.Date)
+            ? SeasonResult(Watching.ChangeSeason(db, user.UserId(), seasonId, e => Watching.Mark(e, request.Value, request.Date), ct))
+            : Task.FromResult(InvalidDate());
+
+    private static IResult InvalidDate() => Common.Invalid("date", "A data precisa estar entre 1900 e hoje.");
 
     private static async Task<IResult> SetSeasonRating(int seasonId, RatingRequest request, ClaimsPrincipal user, AppDbContext db, CancellationToken ct)
     {

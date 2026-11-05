@@ -8,21 +8,35 @@ public record NewSeasonInfo(int TitleId, int SeasonId, int SeasonNumber, string 
 
 public static class Watching
 {
-    public static void Mark(LibraryEntry entry, bool watched)
+    public static void Mark(LibraryEntry entry, bool watched, DateOnly? date = null)
     {
         entry.Watched = watched;
-        entry.WatchedAt = watched ? entry.WatchedAt ?? DateTime.UtcNow : null;
+        entry.WatchedAt = WatchedAt(watched, date, entry.WatchedAt);
         if (watched)
         {
             entry.InWatchlist = false;
         }
     }
 
-    public static void Mark(SeasonEntry entry, bool watched)
+    public static void Mark(SeasonEntry entry, bool watched, DateOnly? date = null)
     {
         entry.Watched = watched;
-        entry.WatchedAt = watched ? entry.WatchedAt ?? DateTime.UtcNow : null;
+        entry.WatchedAt = WatchedAt(watched, date, entry.WatchedAt);
     }
+
+    public static bool IsValidDate(DateOnly? date) =>
+        date is null || (date >= new DateOnly(1900, 1, 1) && date <= DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)));
+
+    public static IQueryable<LibraryEntry> InProgress(this IQueryable<LibraryEntry> query, AppDbContext db) =>
+        query.Where(e => !e.Watched && db.SeasonEntries.Any(s => s.UserId == e.UserId && s.Season.TitleId == e.TitleId && s.Watched));
+
+    private static DateTime? WatchedAt(bool watched, DateOnly? date, DateTime? current) =>
+        !watched ? null
+        : date is { } day ? day.ToDateTime(new TimeOnly(12, 0), DateTimeKind.Utc)
+        : current ?? DateTime.UtcNow;
+
+    private static Task<bool> HasWatchedSeasons(AppDbContext db, int userId, int titleId, CancellationToken ct) =>
+        db.SeasonEntries.AnyAsync(e => e.UserId == userId && e.Season.TitleId == titleId && e.Watched, ct);
 
     public static async Task<LibraryEntry?> ChangeEntry(AppDbContext db, int userId, int titleId, Action<LibraryEntry> change, CancellationToken ct)
     {
@@ -38,7 +52,7 @@ public static class Watching
         }
         change(entry);
         entry.UpdatedAt = DateTime.UtcNow;
-        if (!entry.InWatchlist && !entry.Watched && entry.Rating is null)
+        if (!entry.InWatchlist && !entry.Watched && entry.Rating is null && !await HasWatchedSeasons(db, userId, titleId, ct))
         {
             db.LibraryEntries.Remove(entry);
         }
@@ -73,6 +87,7 @@ public static class Watching
         }
         await db.SaveChangesAsync(ct);
         var titleWatched = await SyncSeries(db, userId, season.TitleId, entry.Watched, entry.Watched != wasWatched, ct);
+        await ChangeEntry(db, userId, season.TitleId, _ => { }, ct);
         return (season, entry, titleWatched);
     }
 

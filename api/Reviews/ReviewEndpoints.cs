@@ -28,6 +28,7 @@ public static class ReviewEndpoints
     public static void MapReviewEndpoints(this IEndpointRouteBuilder app)
     {
         app.MapGet("/titles/{titleId:int}/reviews", TitleReviews);
+        app.MapGet("/users/{username}/reviews", UserReviews);
 
         var me = app.MapGroup("/me").RequireAuthorization();
         me.MapPut("/titles/{titleId:int}/review", SaveReview);
@@ -56,6 +57,31 @@ public static class ReviewEndpoints
             query.OrderByDescending(r => r.CreatedAt).Skip((page - 1) * PageSize).Take(PageSize),
             user.UserIdOrNull(),
             includeTitle: false,
+            ct);
+        return Results.Ok(new PageDto<ReviewDto>(reviews, page, Common.TotalPages(total, PageSize), total));
+    }
+
+    private static async Task<IResult> UserReviews(
+        string username,
+        ClaimsPrincipal user,
+        AppDbContext db,
+        TitleService titles,
+        CancellationToken ct,
+        [Range(1, 1000)] int page = 1)
+    {
+        var owner = await db.Users.Where(u => u.Username == username.ToLower()).Select(u => (int?)u.Id).FirstOrDefaultAsync(ct);
+        if (owner is null)
+        {
+            return Results.NotFound();
+        }
+        var query = db.Reviews.Where(r => r.UserId == owner);
+        var total = await query.CountAsync(ct);
+        var reviews = await ReviewQueries.Load(
+            db,
+            titles,
+            query.OrderByDescending(r => r.CreatedAt).ThenByDescending(r => r.Id).Skip((page - 1) * PageSize).Take(PageSize),
+            user.UserIdOrNull(),
+            includeTitle: true,
             ct);
         return Results.Ok(new PageDto<ReviewDto>(reviews, page, Common.TotalPages(total, PageSize), total));
     }

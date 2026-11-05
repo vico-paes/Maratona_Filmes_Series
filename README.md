@@ -4,6 +4,17 @@ Projeto pessoal, gratuito e sem fins comerciais, inspirado no Letterboxd, que ca
 
 > This product uses the TMDB API but is not endorsed or certified by TMDB.
 
+## Telas
+
+- **Início:** lançamentos, populares, séries no ar e o aviso de novas temporadas das séries que você já terminou. A busca fica no topo, com filmes, séries e pessoas separados.
+- **Filme ou série:** sinopse, direção ou criação, roteiro, os 5 atores principais, notas do IMDb, Rotten Tomatoes e Metacritic, selo e lista de Oscars ou Emmys, e as reviews de quem já assistiu. Nas séries, cada temporada abre a lista de episódios.
+- **Review:** marca como assistido ou "quero ver", dá a nota (estrelas ou 0 a 10, com troca só daquela nota), guarda a data em que você assistiu (dá para mudar, para catalogar algo visto há tempo) e publica o texto, com aviso de spoiler. Nas séries, a review pode ser da série inteira ou de uma temporada.
+- **🔒 Nota:** anotação privada, separada da review, que salva sozinha enquanto você escreve. Existe para o filme, para a série e para cada episódio, e nunca é publicada.
+- **Biblioteca:** filtros Todos/Filmes/Séries e Tudo/Quero ver/Assistindo/Assistidos, com as ordenações por status, data, nota, IMDb, ano e A–Z. O olhinho marca o que já foi assistido.
+- **Feed:** reviews recentes de todo mundo ou só de quem você segue.
+- **Perfil:** capa, foto, bio, seguidores, números (filmes, séries, temporadas, horas, reviews), 4 filmes e 4 séries favoritos com uma coroa em cada grupo, assistidos recentemente, reviews e listas.
+- **Configurações:** dados do perfil, estilo de nota (com prévia da conversão das notas antigas antes de confirmar), senha e conta.
+
 ## Stack
 
 - **API:** ASP.NET Core (.NET 10), Entity Framework Core, PostgreSQL
@@ -88,7 +99,7 @@ npm install
 npm run dev
 ```
 
-Crie `web/.env.local` com `NEXT_PUBLIC_API_URL=http://localhost:5000`. O front sobe em `http://localhost:3000`.
+Crie `web/.env.local` com `NEXT_PUBLIC_API_URL=http://localhost:5000`. O front sobe em `http://localhost:3000`, que precisa ser o mesmo endereço cadastrado em `FRONTEND_URL` na API.
 
 ## Deploy
 
@@ -125,6 +136,7 @@ No plano gratuito o Render "dorme" após um tempo sem acesso. Os jobs diários g
 - Limite de requisições: 300 por minuto por IP, 120 por minuto por usuário e 10 por minuto por IP no login, cadastro e alterações de conta.
 - CORS liberado apenas para a URL do front definida em `FRONTEND_URL`.
 - Todas as entradas são validadas, e as notas privadas nunca aparecem em rotas públicas.
+- No front, o token fica no `localStorage` do navegador e é apagado ao sair ou quando expira.
 
 ## Como funcionam notas e prêmios
 
