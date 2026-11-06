@@ -1,6 +1,6 @@
 namespace Maratona.Api.Tmdb;
 
-public record TmdbPage<T>(int Page, int TotalPages, List<T>? Results);
+public record TmdbPage<T>(int Page, int TotalPages, int TotalResults, List<T>? Results);
 
 public record TmdbListItem(int Id, string? Title, string? Name, string? ReleaseDate, string? FirstAirDate, string? PosterPath, double Popularity);
 

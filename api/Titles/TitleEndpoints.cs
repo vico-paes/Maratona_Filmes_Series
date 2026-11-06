@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 using Maratona.Api.Data.Entities;
+using Maratona.Api.Infrastructure;
 using Maratona.Api.Omdb;
 using Maratona.Api.Tmdb;
 using Microsoft.Extensions.Caching.Memory;
@@ -18,6 +19,7 @@ public static class TitleEndpoints
     public static void MapTitleEndpoints(this IEndpointRouteBuilder app)
     {
         app.MapGet("/home", Home);
+        app.MapGet("/home/{list}", HomeList);
 
         var titles = app.MapGroup("/titles");
         titles.MapGet("/search", Search);
@@ -88,6 +90,38 @@ public static class TitleEndpoints
     {
         var season = await service.GetSeason(tmdbId, number, ct);
         return season is null ? Results.NotFound() : Results.Ok(TitleMapper.ToDetails(season));
+    }
+
+    private const int MaxListPages = 20;
+
+    private static readonly Dictionary<string, (string Path, MediaType Type)> Lists = new()
+    {
+        ["now-playing"] = ("movie/now_playing", MediaType.Movie),
+        ["popular-movies"] = ("movie/popular", MediaType.Movie),
+        ["on-the-air"] = ("tv/on_the_air", MediaType.Tv),
+        ["popular-series"] = ("tv/popular", MediaType.Tv),
+    };
+
+    private static async Task<IResult> HomeList(
+        string list,
+        TmdbClient tmdb,
+        TitleService service,
+        IMemoryCache cache,
+        CancellationToken ct,
+        [Range(1, MaxListPages)] int page = 1)
+    {
+        if (!Lists.TryGetValue(list, out var source))
+        {
+            return Results.NotFound();
+        }
+        var result = await cache.GetOrCreateAsync($"home-list:{list}:{page}", async entry =>
+        {
+            entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(1);
+            return await tmdb.GetList(source.Path, page, ct);
+        });
+        var cards = await service.ToCards(source.Type, result?.Results ?? [], ct);
+        var totalPages = Math.Min(result?.TotalPages ?? 0, MaxListPages);
+        return Results.Ok(new PageDto<TitleCardDto>(cards, page, totalPages, Math.Min(result?.TotalResults ?? 0, totalPages * 20)));
     }
 
     private static async Task<IResult> Home(TmdbClient tmdb, TitleService service, IMemoryCache cache, CancellationToken ct)

@@ -1,19 +1,30 @@
 "use client";
 
 import Link from "next/link";
-import { Sparkles } from "lucide-react";
-import { PosterCard, PosterRow } from "@/components/PosterCard";
+import { ChevronRight, Sparkles } from "lucide-react";
+import { PosterCard } from "@/components/PosterCard";
+import { PosterRow } from "@/components/PosterRow";
 import { Message, SectionTitle, Spinner } from "@/components/ui";
 import { useAuth } from "@/lib/auth";
 import { formatDate } from "@/lib/format";
 import { useApi } from "@/lib/hooks";
+import { homeLists } from "@/lib/lists";
 import type { Home, NewSeason, TitleCard } from "@/lib/types";
 
-function Row({ title, items }: { title: string; items: TitleCard[] }) {
+function Row({ title, items, href }: { title: string; items: TitleCard[]; href: string }) {
   if (items.length === 0) return null;
   return (
     <section>
-      <SectionTitle>{title}</SectionTitle>
+      <SectionTitle
+        action={
+          <Link href={href} className="flex items-center gap-0.5 text-sm font-medium text-accent hover:underline">
+            Ver mais
+            <ChevronRight className="size-4" />
+          </Link>
+        }
+      >
+        {title}
+      </SectionTitle>
       <PosterRow>
         {items.map((item) => (
           <PosterCard key={`${item.mediaType}-${item.tmdbId}`} title={item} showRatings />
@@ -79,12 +90,7 @@ export default function HomePage() {
       ) : !data ? (
         <Spinner />
       ) : (
-        <>
-          <Row title="Em cartaz" items={data.nowPlaying} />
-          <Row title="Filmes populares" items={data.popularMovies} />
-          <Row title="Séries no ar" items={data.onTheAir} />
-          <Row title="Séries populares" items={data.popularSeries} />
-        </>
+        homeLists.map((list) => <Row key={list.slug} title={list.title} items={data[list.key]} href={`/explorar/${list.slug}`} />)
       )}
     </div>
   );

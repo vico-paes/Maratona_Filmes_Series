@@ -58,6 +58,7 @@ Notas: cada nota guarda o valor e o estilo com que foi dada (`rating_style` em l
 | Rota | Descrição |
 |---|---|
 | `GET /home` | `nowPlaying`, `popularMovies`, `onTheAir`, `popularSeries` (cards) |
+| `GET /home/{list}?page=` | lista completa paginada (`now-playing`, `popular-movies`, `on-the-air`, `popular-series`), até 20 páginas, cache de 1 hora por página |
 | `GET /titles/search?q=&page=` | `{ movies, series }` separados |
 | `GET /titles/movie/{tmdbId}` | detalhes do filme |
 | `GET /titles/tv/{tmdbId}` | detalhes da série com lista de temporadas |
@@ -155,9 +156,11 @@ Os ids usados nas rotas de usuário são os ids internos (`id` do título e das 
 - Visual escuro com roxo (`--color-accent`); o dourado fica reservado para os selos de prêmio e a coroa. Pensado primeiro para celular: barra de abas embaixo no celular, abas no topo no computador.
 - Token JWT no `localStorage`; resposta 401 apaga o token e a pessoa volta a ser visitante.
 - Imagens com `<img>` direto da CDN do TMDB (sem otimização da Vercel); avatar e capa são links https externos.
-- Rotas: `/` (Início), `/busca?q=`, `/filme/{tmdbId}`, `/serie/{tmdbId}`, `/biblioteca`, `/feed`, `/u/{username}`, `/listas/{id}`, `/configuracoes`, `/entrar`, `/cadastro`.
+- Rotas: `/` (Início), `/explorar/{em-cartaz|filmes-populares|series-no-ar|series-populares}`, `/busca?q=`, `/filme/{tmdbId}`, `/serie/{tmdbId}`, `/biblioteca`, `/feed`, `/u/{username}`, `/listas/{id}`, `/configuracoes`, `/entrar`, `/cadastro`.
 - Abas: Início, Biblioteca, Feed, Perfil, Configurações.
-- Busca separa filmes, séries e pessoas.
+- Busca separa filmes, séries e pessoas. Enquanto digita (a partir de 2 letras, 0,3 s depois de parar), mostra sugestões com etiqueta Filme/Série; setas e Enter navegam, Esc fecha, Enter sem escolha abre a busca completa.
+- Início: cada fileira tem "Ver mais" (página `/explorar/...` com grade e "Carregar mais") e setas para rolar no computador.
+- Selos de prêmio: ícones próprios e genéricos (silhueta de estatueta), não os logos oficiais do Oscar e do Emmy, que são marcas registradas.
 - Biblioteca: Todos/Filmes/Séries, Tudo/Quero ver/Assistindo/Assistidos e as ordenações. Marcadores no pôster: olho (assistido), play (assistindo), marcador (quero ver) e "NOVA" para temporada nova.
 - Feed: Todos | Seguindo, cards com pôster, nota no estilo de quem deu, spoiler borrado com botão para mostrar, curtir e "carregar mais".
 - Review e Nota são separadas (decisão do usuário). Janela de review: Assisti / Quero ver, nota com botão pequeno Estrelas | 0–10 que vale só para aquela nota (converte o valor ao trocar), "Assistido em" com a data de hoje preenchida e editável, texto, spoiler, Publicar/Salvar. Nas séries, um seletor escolhe série inteira ou temporada.

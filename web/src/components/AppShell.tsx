@@ -10,7 +10,7 @@ import { Avatar, cx } from "./ui";
 function useTabs() {
   const { me } = useAuth();
   return [
-    { href: "/", label: "Início", icon: House, match: (p: string) => p === "/" || p.startsWith("/busca") },
+    { href: "/", label: "Início", icon: House, match: (p: string) => p === "/" || p.startsWith("/busca") || p.startsWith("/explorar") },
     { href: "/biblioteca", label: "Biblioteca", icon: Library, match: (p: string) => p.startsWith("/biblioteca") },
     { href: "/feed", label: "Feed", icon: MessagesSquare, match: (p: string) => p.startsWith("/feed") },
     {

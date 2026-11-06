@@ -6,7 +6,7 @@ Projeto pessoal, gratuito e sem fins comerciais, inspirado no Letterboxd, que ca
 
 ## Telas
 
-- **Início:** lançamentos, populares, séries no ar e o aviso de novas temporadas das séries que você já terminou. A busca fica no topo, com filmes, séries e pessoas separados.
+- **Início:** lançamentos, populares, séries no ar e o aviso de novas temporadas das séries que você já terminou. Cada lista tem "Ver mais" com a lista completa. A busca fica no topo, mostra sugestões enquanto você digita e separa filmes, séries e pessoas.
 - **Filme ou série:** sinopse, direção ou criação, roteiro, os 5 atores principais, notas do IMDb, Rotten Tomatoes e Metacritic, selo e lista de Oscars ou Emmys, e as reviews de quem já assistiu. Nas séries, cada temporada abre a lista de episódios.
 - **Review:** marca como assistido ou "quero ver", dá a nota (estrelas ou 0 a 10, com troca só daquela nota), guarda a data em que você assistiu (dá para mudar, para catalogar algo visto há tempo) e publica o texto, com aviso de spoiler. Nas séries, a review pode ser da série inteira ou de uma temporada.
 - **🔒 Nota:** anotação privada, separada da review, que salva sozinha enquanto você escreve. Existe para o filme, para a série e para cada episódio, e nunca é publicada.
