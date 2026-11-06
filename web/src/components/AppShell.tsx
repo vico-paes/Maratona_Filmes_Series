@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
-import { Clapperboard, House, Library, MessagesSquare, Search, Settings, UserRound } from "lucide-react";
+import { usePathname } from "next/navigation";
+import { Clapperboard, House, Library, MessagesSquare, Settings, UserRound } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { SearchBox } from "./SearchBox";
 import { Avatar, cx } from "./ui";
 
 function useTabs() {
@@ -21,31 +21,6 @@ function useTabs() {
     },
     { href: "/configuracoes", label: "Configurações", icon: Settings, match: (p: string) => p.startsWith("/configuracoes") },
   ];
-}
-
-function SearchBox({ className }: { className?: string }) {
-  const router = useRouter();
-  const [value, setValue] = useState("");
-  return (
-    <form
-      role="search"
-      className={cx("relative", className)}
-      onSubmit={(e) => {
-        e.preventDefault();
-        const q = value.trim();
-        if (q) router.push(`/busca?q=${encodeURIComponent(q)}`);
-      }}
-    >
-      <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-faint" />
-      <input
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        placeholder="Buscar filmes, séries e pessoas"
-        maxLength={100}
-        className="h-10 w-full rounded-full border border-line bg-surface-2 pl-10 pr-4 text-sm placeholder:text-faint focus:border-accent focus:outline-none"
-      />
-    </form>
-  );
 }
 
 function Logo() {
